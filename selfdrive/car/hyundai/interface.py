@@ -107,7 +107,7 @@ class CarInterface(object):
       ret.steerKiBP, ret.steerKpBP = [[0.], [0.]]
       ret.steerKpV, ret.steerKiV = [[0.16], [0.01]]
       ret.minSteerSpeed = 35 * CV.MPH_TO_MS
-    elif candidate == CAR.KIA_STINGER:
+    elif candidate == CAR.KIA_STINGER_GT:
       ret.steerKf = 0.00005
       ret.steerRateCost = 0.5
       ret.mass = 1825 + std_cargo
@@ -116,7 +116,33 @@ class CarInterface(object):
       ret.steerKiBP, ret.steerKpBP = [[0.], [0.]]
       ret.steerKpV, ret.steerKiV = [[0.25], [0.05]]
       ret.minSteerSpeed = 0.
+    elif candidate == CAR.KIA_STINGER_2L:
+      ret.steerKf = 0.00004         # Lowering feedforward to reduce violence   (5_4.5_4) -> 2    (4 seems to work well with 0.36 Kp)
+        # 0.00007 seemed to turn in too hard when combined with 0.36 Kp
+      #  0.4 to 0.7 seems like a good range
+      ret.steerRateCost = 0.5       # steer rate cost was 0.5, changed to 0.99 and saw no real difference
+      ret.mass = 3637 * CV.LB_TO_KG + std_cargo
+      ret.wheelbase = 2.91
+      ret.steerRatio = 12.6 * 1.15   # 15% higher at the center seems reasonable
+      # Speed conversion:                 0,  20,  45,  75 mph
+      ret.steerKpBP, ret.steerKiBP = [[  0.,  9., 20., 34.], [  0.,  9., 20., 34.]]           
+#      ret.steerKpV, ret.steerKiV =   [[0.20,0.15,0.25,0.20], [0.03,0.03,0.03,0.03]]
+#      ret.steerKpV, ret.steerKiV =   [[0.20,0.15,0.15,0.13], [0.005,0.005,0.005,0.005]]   # 0.02 still ponged
+#      ret.steerKpV, ret.steerKiV =   [[0.15,0.10,0.10,0.08], [0.005,0.005,0.005,0.005]]   # 0.005 still ponged... probably Kp or Kf
+#      ret.steerKpV, ret.steerKiV =   [[0.4,0.4,0.4,0.4], [0.005,0.005,0.005,0.005]]   # 0.005 still ponged... probably Kp or Kf
+        # all testing at 63mph
+        #.35 kp was awesome!    
+        # .7 was hilariously bouncy, waaay too high.
+        #0.5 is too high... but when on track it did readlly good.  starts to warble when it gets off track and comes back.
+        #0.4 is perfect...
+#      ret.steerKpV, ret.steerKiV =   [[0.4,0.4,0.4,0.4], [0.3,0.3,0.3,0.3]]   # 0.3 wasn't crazy, but it wasnt' good
+#      ret.steerKpV, ret.steerKiV =   [[0.4,0.4,0.4,0.4], [0.03,0.03,0.03,0.03]]   # 0.15 had some ponging, 0.05 still had some
+      ret.steerKpV, ret.steerKiV =   [[0.15,0.15,0.34,0.34], [0.03,0.03,0.03,0.03]]   # 0.15 had some ponging, 0.05 still had some
+      # 0.15 at 0 and 20 works well.   
+      # 0.34 had some pogo on the highway at 60mph
 
+      ret.minSteerSpeed = 0.
+      
     ret.minEnableSpeed = -1.   # enable is done by stock ACC, so ignore this
     ret.longitudinalKpBP = [0.]
     ret.longitudinalKpV = [0.]
