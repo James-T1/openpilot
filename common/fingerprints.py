@@ -19,6 +19,7 @@ def get_fingerprint_list():
         fingerprints[f] = v
     except (ImportError, IOError):
       pass
+  #print(fingerprints)
   return fingerprints
 
 
@@ -56,9 +57,44 @@ def eliminate_incompatible_cars(msg, candidate_cars):
         compatible_cars.append(car_name)
         break
 
+  #print(compatible_cars)
   return compatible_cars
 
 
 def all_known_cars():
   """Returns a list of all known car strings."""
   return _FINGERPRINTS.keys()
+
+
+def get_shortest_fpmatch(finger, candidate_cars):
+  """Finds the shortest valid match for a car fingerprint.
+
+     Inputs:
+      finger: A fingerprint dictionary for the car we're trying to match to a candidate.
+      candidate_cars:  A list of cars that match all of the fingerprints we have so far.
+
+     Returns:
+      The integer index of the shortest valid fingerprint in candidate_cars, or None if no valid fingerprints exist.
+      If there are multiple valid shortest fingerprints, the first one found will be returned.  
+    
+     Use a sanity check on fingerprint length before sending a fingerprint to this function.
+  """
+  shortest_fp = None
+  for i, car_name in enumerate(candidate_cars):
+    car_fingerprints = _FINGERPRINTS[car_name]
+    for fingerprint in car_fingerprints:
+      valid = True
+      for adr in finger:
+        # check if this fingerprint is actually valid since multiple fingerprints can live under a single car
+        if not (adr in fingerprint and fingerprint[adr] == finger[adr]):
+          valid = False
+          break
+      if not valid: continue
+      # if fingerprint is valid, check to see if it is the shortest we have seen so far
+      if not shortest_fp or (len(fingerprint) < shortest_fp[0]):
+        shortest_fp = [len(fingerprint), i]  
+
+  if shortest_fp is not None:
+    return shortest_fp[1]
+  else:
+    return None
