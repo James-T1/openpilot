@@ -2,7 +2,7 @@ import os
 import time
 from common.basedir import BASEDIR
 from common.realtime import sec_since_boot
-from common.fingerprints import eliminate_incompatible_cars, all_known_cars
+from common.fingerprints import eliminate_incompatible_cars, all_known_cars, get_shortest_fpmatch
 from selfdrive.swaglog import cloudlog
 import selfdrive.messaging as messaging
 
@@ -51,6 +51,8 @@ def fingerprint(logcan, timeout):
   finger = {}
   st = None
   st_passive = sec_since_boot()  # only relevant when passive
+  it = None
+  prev_finger_len = -1
   can_seen = False
   while 1:
     for a in messaging.drain_sock(logcan):
@@ -59,25 +61,48 @@ def fingerprint(logcan, timeout):
         # ignore everything not on bus 0 and with more than 11 bits,
         # which are ussually sporadic and hard to include in fingerprints
         if can.src == 0 and can.address < 0x800:
-          finger[can.address] = len(can.dat)
+          finger[int(can.address)] = len(can.dat)      # convert long int can address to a normal int
           candidate_cars = eliminate_incompatible_cars(can, candidate_cars)
 
+    # set start time when first can message is seen
     if st is None and can_seen:
-      st = sec_since_boot()          # start time
-    ts = sec_since_boot()
-    # if we only have one car choice and the time_fingerprint since we got our first
-    # message has elapsed, exit. Toyota needs higher time_fingerprint, since DSU does not
+      st = sec_since_boot()
+    # reset idle timer when fingerprint grows
+    if len(finger) != prev_finger_len:
+      it = None
+    # set idle timer when fingerprinting stalls
+    elif it is None and len(finger) == prev_finger_len:
+      it = sec_since_boot()  
+    # set current time
+    ts = sec_since_boot()        
+
+    # if we only have one car choice and the time_fingerprint since we stalled
+    # has elapsed, exit. Toyota needs higher time_fingerprint, since DSU does not
     # broadcast immediately
     if len(candidate_cars) == 1 and st is not None:
       # TODO: better way to decide to wait more if Toyota
       time_fingerprint = 1.0 if ("TOYOTA" in candidate_cars[0] or "LEXUS" in candidate_cars[0]) else 0.1
       if (ts-st) > time_fingerprint:
         break
+    # if fingerprinting has stalled with more than 1 candidate, 
+    # go with the shortest fingerprint (car with lowest trim level),
+    # but only when we have an adequate number of matches
+    elif len(candidate_cars) > 1 and it is not None:
+      if ((ts-it) > 1.0) and (len(finger) > 30):
+        #print('Checking for shortest fingerprint...')
+        shortest_fp = get_shortest_fpmatch(finger, candidate_cars)
+        if shortest_fp is not None:
+          #print('Shortest fingerprint found.')
+          candidate_cars = [ candidate_cars[shortest_fp] ]
+          break
 
     # bail if no cars left or we've been waiting too long
     elif len(candidate_cars) == 0 or (timeout and (ts - st_passive) > timeout):
       return None, finger
 
+    # store the length of our current fingerprint if we've seen a can message
+    if can_seen:
+      prev_finger_len = len(finger)
     time.sleep(0.01)
 
   cloudlog.warning("fingerprinted %s", candidate_cars[0])
