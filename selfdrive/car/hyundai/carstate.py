@@ -134,9 +134,9 @@ def get_camera_parser(CP):
     ("CR_Lkas_StrToqReq", "LKAS11", 0)
   ]
 
-  checks = []
-
-  return CANParser(DBC[CP.carFingerprint]['pt'], signals, checks, 2)
+  checks = [("LKAS11", 100)]
+  return (CANParser(DBC[CP.carFingerprint]['pt'], signals, checks, 2)), \
+    (CANParser(DBC[CP.carFingerprint]['pt'], signals, checks, 1))
 
 class CarState(object):
   def __init__(self, CP):
@@ -151,7 +151,7 @@ class CarState(object):
     # ALCA PARAMS
     # max REAL delta angle for correction vs actuator
     self.CL_MAX_ANGLE_DELTA_BP = [10., 44.]
-    self.CL_MAX_ANGLE_DELTA = [1.8, .3]
+    self.CL_MAX_ANGLE_DELTA = [2.4, .3]
 
     # adjustment factor for merging steer angle to actuator; should be over 4; the higher the smoother
     self.CL_ADJUST_FACTOR_BP = [10., 44.]
@@ -164,7 +164,7 @@ class CarState(object):
 
     # a jump in angle above the CL_LANE_DETECT_FACTOR means we crossed the line
     self.CL_LANE_DETECT_BP = [10., 44.]
-    self.CL_LANE_DETECT_FACTOR = [1.5, .75]
+    self.CL_LANE_DETECT_FACTOR = [1.7, .75]
 
     self.CL_LANE_PASS_BP = [10., 44.]
     self.CL_LANE_PASS_TIME = [60., 3.] 
@@ -188,7 +188,7 @@ class CarState(object):
 
     #duration after we cross the line until we release is a factor of speed
     self.CL_TIMEA_BP = [10., 32., 44.]
-    self.CL_TIMEA_T = [0.7 ,0.30, 0.20]
+    self.CL_TIMEA_T = [0.7 ,0.4, 0.20]
 
     self.CL_WAIT_BEFORE_START = 1
     #END OF ALCA PARAMS
@@ -228,7 +228,7 @@ class CarState(object):
     #BB custom message counter
     self.custom_alert_counter = -1 #set to 100 for 1 second display; carcontroller will take down to zero
 
-  def update(self, cp, cp_cam):
+  def update(self, cp, cp_cam, cp_cam2):
     # copy can_valid
     self.can_valid = cp.can_valid
 
@@ -278,7 +278,7 @@ class CarState(object):
     self.left_blinker_flash = cp.vl["CGW1"]['CF_Gway_TurnSigLh']
     self.right_blinker_on = cp.vl["CGW1"]['CF_Gway_TSigRHSw']
     self.right_blinker_flash = cp.vl["CGW1"]['CF_Gway_TurnSigRh']
-    self.steer_override = abs(cp.vl["MDPS11"]['CR_Mdps_DrvTq']) > 150.
+    self.steer_override = abs(cp.vl["MDPS11"]['CR_Mdps_DrvTq']) > 100.
     self.steer_state = cp.vl["MDPS12"]['CF_Mdps_ToiActive'] #0 NOT ACTIVE, 1 ACTIVE
     self.steer_error = cp.vl["MDPS12"]['CF_Mdps_ToiUnavail']
     self.brake_error = 0
@@ -321,7 +321,14 @@ class CarState(object):
       self.gear_shifter_cluster = "unknown"
 
     # save the entire LKAS11, CLU11 and MDPS12
-    self.lkas11 = cp_cam.vl["LKAS11"]
+    #print cp_cam.can_valid, cp_cam2.can_valid
+    if cp_cam.can_valid == True:
+      self.lkas11 = cp_cam.vl["LKAS11"]
+      self.camcan = 2
+    else:
+      self.lkas11 = cp_cam2.vl["LKAS11"]
+      self.camcan = 1
+
     self.clu11 = cp.vl["CLU11"]
     self.mdps12 = cp.vl["MDPS12"]
 

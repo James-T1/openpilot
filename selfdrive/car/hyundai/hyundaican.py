@@ -11,7 +11,7 @@ def create_lkas11(packer, car_fingerprint, apply_steer, steer_req, cnt, enabled,
     use_stock = False
 
   values = {
-    "CF_Lkas_Icon": lkas11["CF_Lkas_Icon"] if use_stock else (3 if enabled else 0),
+    "CF_Lkas_Icon": lkas11["CF_Lkas_Icon"] if use_stock else (2 if enabled else 0),
     "CF_Lkas_LdwsSysState": lkas11["CF_Lkas_LdwsSysState"] if use_stock else (3 if steer_req else 1),
     "CF_Lkas_SysWarning": lkas11["CF_Lkas_SysWarning"] if use_stock else hud_alert,
     "CF_Lkas_LdwsLHWarning": lkas11["CF_Lkas_LdwsLHWarning"] if keep_stock else 0,
@@ -83,7 +83,7 @@ def create_clu11(packer, clu11, button):
 
   return packer.make_can_msg("CLU11", 0, values)
 
-def create_mdps12(packer, cnt, mdps12, lkas11):
+def create_mdps12(packer, cnt, mdps12, lkas11, camcan):
   values = {
     "CR_Mdps_StrColTq": mdps12["CR_Mdps_StrColTq"],
     "CF_Mdps_Def": mdps12["CF_Mdps_Def"],
@@ -98,10 +98,10 @@ def create_mdps12(packer, cnt, mdps12, lkas11):
     "CR_Mdps_OutTq": mdps12["CR_Mdps_OutTq"],
   }
 
-  dat = packer.make_can_msg("MDPS12", 2, values)[2]
+  dat = packer.make_can_msg("MDPS12", camcan, values)[2]
 
   dat = [ord(i) for i in dat]
   checksum = (dat[0] + dat[1] + dat[2] + dat[4] + dat[5] + dat[6] + dat[7]) % 256
   values["CF_Mdps_Chksum2"] = checksum
 
-  return packer.make_can_msg("MDPS12", 2, values)
+  return packer.make_can_msg("MDPS12", camcan, values)
