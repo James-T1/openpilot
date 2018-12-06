@@ -236,6 +236,7 @@ def state_control(plan, CS, CP, state, events, v_cruise_kph, v_cruise_kph_last, 
                   driver_status, PL, LaC, LoC, VM, angle_offset, passive, is_metric, cal_perc):
   """Given the state, this function returns an actuators packet"""
 
+  # reset actuators to zero
   actuators = car.CarControl.Actuators.new_message()
 
   enabled = isEnabled(state)
@@ -330,7 +331,8 @@ def data_send(perception_state, plan, plan_ts, CS, CI, CP, VM, state, events, ac
     # send car controls over can
     CI.apply(CC, perception_state)
 
-  # live100
+  # ***** publish state to logger *****
+  # publish controls state at 100Hz
   dat = messaging.new_message()
   dat.init('live100')
   dat.live100 = {
@@ -380,7 +382,7 @@ def data_send(perception_state, plan, plan_ts, CS, CI, CP, VM, state, events, ac
   cs_send.carState.events = events
   carstate.send(cs_send.to_bytes())
 
-  # carControl
+  # broadcast carControl
   cc_send = messaging.new_message()
   cc_send.init('carControl')
   cc_send.carControl = CC
@@ -517,7 +519,7 @@ def controlsd_thread(gctx=None, rate=100, default_bias=0.):
       live100, livempc, AM, driver_status, LaC, LoC, angle_offset, passive)
     prof.checkpoint("Sent")
 
-    rk.keep_time()  # Run at 100Hz
+    rk.keep_time()  # Run this loop at fixed 100Hz rate
     prof.display()
 
 

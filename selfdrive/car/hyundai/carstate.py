@@ -63,12 +63,19 @@ def get_can_parser(CP):
     ("CR_Mdps_DrvTq", "MDPS11", 0),
 
     ("CR_Mdps_StrColTq", "MDPS12", 0),
+    ("CF_Mdps_Def", "MDPS12", 0),
     ("CF_Mdps_ToiActive", "MDPS12", 0),
     ("CF_Mdps_ToiUnavail", "MDPS12", 0),
+    ("CF_Mdps_MsgCount2", "MDPS12", 0),
+    ("CF_Mdps_Chksum2", "MDPS12", 0),
+    ("CF_Mdps_ToiFlt", "MDPS12", 0),
+    ("CF_Mdps_SErr", "MDPS12", 0),
+    ("CR_Mdps_StrTq", "MDPS12", 0),
     ("CF_Mdps_FailStat", "MDPS12", 0),
     ("CR_Mdps_OutTq", "MDPS12", 0),
 
     ("VSetDis", "SCC11", 0),
+    ("MainMode_ACC", "SCC11", 0),
     ("SCCInfoDisplay", "SCC11", 0),
     ("ACCMode", "SCC12", 1),
 
@@ -99,6 +106,7 @@ def get_camera_parser(CP):
 
   signals = [
     # sig_name, sig_address, default
+    ("CF_Lkas_Icon", "LKAS11", 0),
     ("CF_Lkas_LdwsSysState", "LKAS11", 0),
     ("CF_Lkas_SysWarning", "LKAS11", 0),
     ("CF_Lkas_LdwsLHWarning", "LKAS11", 0),
@@ -113,12 +121,16 @@ def get_camera_parser(CP):
     ("CF_Lkas_FcwCollisionWarning", "LKAS11", 0),
     ("CF_Lkas_FusionState", "LKAS11", 0),
     ("CF_Lkas_FcwOpt_USM", "LKAS11", 0),
-    ("CF_Lkas_LdwsOpt_USM", "LKAS11", 0)
+    ("CF_Lkas_LdwsOpt_USM", "LKAS11", 0),
+    ("CF_Lkas_Unknown1", "LKAS11", 0),
+    ("CF_Lkas_Unknown2", "LKAS11", 0),
+    ("CF_Lkas_ActToi", "LKAS11", 0),
+    ("CR_Lkas_StrToqReq", "LKAS11", 0)
   ]
 
-  checks = []
-
-  return CANParser(DBC[CP.carFingerprint]['pt'], signals, checks, 2)
+  checks = [("LKAS11", 100)]
+  return (CANParser(DBC[CP.carFingerprint]['pt'], signals, checks, 2)), \
+    (CANParser(DBC[CP.carFingerprint]['pt'], signals, checks, 1))
 
 class CarState(object):
   def __init__(self, CP):
@@ -234,6 +246,15 @@ class CarState(object):
     else:
       self.gear_shifter_cluster = "unknown"
 
-    # save the entire LKAS11 and CLU11
-    self.lkas11 = cp_cam.vl["LKAS11"]
+    # save the entire LKAS11, CLU11 and MDPS12
+    #print cp_cam.can_valid, cp_cam2.can_valid
+    if cp_cam.can_valid == True:
+      self.lkas11 = cp_cam.vl["LKAS11"]
+      self.camcan = 2
+    else:
+      self.lkas11 = cp_cam2.vl["LKAS11"]
+      self.camcan = 1
+
     self.clu11 = cp.vl["CLU11"]
+    self.mdps12 = cp.vl["MDPS12"]
+
