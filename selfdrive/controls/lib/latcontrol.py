@@ -100,7 +100,7 @@ class LatControl(object):
     self.angle_steers_des_mpc = 0.0
     self.angle_steers_des_prev = 0.0
     self.angle_steers_des_time = 0.0
-		self.rtt_reset_mpc = False
+    self.rtt_reset_mpc = False
 
   def reset(self):
     self.pid.reset()
