@@ -69,7 +69,7 @@ class LatControl(object):
     self.pid._k_p = (CP.steerKpBP, CP.steerKpV)    # proportional gain
     self.pid._k_i = (CP.steerKiBP, CP.steerKiV)       # integral gain
     self.pid.k_f = CP.steerKf                                 # feedforward gain
-    self.deadzone = deadzone
+    #self.deadzone = deadzone
     self.smooth_factor = float(smooth_factor) * CP.steerActuatorDelay / _DT      # Multiplier for inductive component (feed forward)
     self.projection_factor = float(projection_factor) * _DT                                    #  Mutiplier for reactive component (PI)
     self.accel_limit = float(accel_limit)                        # Desired acceleration limit to prevent "whip steer" (resistive component)
