@@ -558,7 +558,7 @@ def controlsd_thread(gctx=None, rate=100, default_bias=0.):
         rtt_params['steerRateCost'] = CP.steerRateCost
         #rtt_params['latPidDeadzone'] = 0.0
         rtt_params['steerActuatorDelay'] = CP.steerActuatorDelay
-        rtt_params['Camera Offset'] = PL.PP.CAMERA_OFFSET
+        rtt_params['Camera Offset'] = PL.PP.cam_offset
         rtt_params['smooth_factor'] = 2.0
         rtt_params['projection_factor'] = 5.0
         rtt_params['accel_limit'] = 5.0
