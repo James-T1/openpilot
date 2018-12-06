@@ -105,3 +105,4 @@ def create_mdps12(packer, cnt, mdps12, lkas11, camcan):
   values["CF_Mdps_Chksum2"] = checksum
 
   return packer.make_can_msg("MDPS12", camcan, values)
+

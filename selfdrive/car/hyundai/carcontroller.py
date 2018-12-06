@@ -67,9 +67,9 @@ class CarController(object):
 
 #    can_sends.append(create_lkas11(self.packer, self.car_fingerprint, apply_steer, steer_req, self.lkas11_cnt, \
 #                                   enabled, CS.lkas11, hud_alert, (CS.cstm_btns.get_button_status("cam") > 0), keep_stock=(not self.camera_disconnected)))
-#   Going to set use_stock = 1 so if OP is disabled it will use the stock LKAS system.
+#   Going to set use_stock = True so if OP is disabled it will use the stock LKAS system.
     can_sends.append(create_lkas11(self.packer, self.car_fingerprint, apply_steer, steer_req, self.lkas11_cnt, \
-                                   enabled, CS.lkas11, hud_alert, 1, keep_stock=(not self.camera_disconnected)))
+                                   enabled, CS.lkas11, hud_alert, True, keep_stock=(not self.camera_disconnected)))
 
     can_sends.append(create_mdps12(self.packer, self.mdps12_cnt, CS.mdps12, CS.lkas11, CS.camcan))
 
