@@ -40,6 +40,8 @@ class LatControl(object):
                             k_f=CP.steerKf, pos_limit=1.0)
     self.last_cloudlog_t = 0.0
     self.setup_mpc(CP.steerRateCost)
+    self.deadzone = 0.0
+
     self.smooth_factor = 2.0 * CP.steerActuatorDelay / _DT      # Multiplier for inductive component (feed forward)
     self.projection_factor = 5.0 * _DT                       #  Mutiplier for reactive component (PI)
     self.accel_limit = 5.0                                 # Desired acceleration limit to prevent "whip steer" (resistive component)
@@ -60,6 +62,26 @@ class LatControl(object):
     self.curvature_factor = 0.0
     self.slip_factor = 0.0
 
+
+  def update_rt_params( self, CP, rt_mpc_flag, smooth_factor, projection_factor, accel_limit, ff_angle_factor, ff_rate_factor, ratioDelayExp, ratioDelayScale ):
+    # TODO:  Is this really necessary, or is the original reference preserved through the cap n' proto setup?
+    # Real-time tuning:  Update these values from the CP if called from real-time tuning logic in controlsd
+    self.pid._k_p = (CP.steerKpBP, CP.steerKpV)    # proportional gain
+    self.pid._k_i = (CP.steerKiBP, CP.steerKiV)       # integral gain
+    self.pid.k_f = CP.steerKf                                 # feedforward gain
+    self.deadzone = deadzone
+    self.smooth_factor = float(smooth_factor) * CP.steerActuatorDelay / _DT      # Multiplier for inductive component (feed forward)
+    self.projection_factor = float(projection_factor) * _DT                                    #  Mutiplier for reactive component (PI)
+    self.accel_limit = float(accel_limit)                        # Desired acceleration limit to prevent "whip steer" (resistive component)
+    self.ff_angle_factor = float(ff_angle_factor)           # Kf multiplier for angle-based feed forward
+    self.ff_rate_factor = float(ff_rate_factor)                # Kf multiplier for rate-based feed forward
+    self.ratioDelayExp = float(ratioDelayExp)              # Exponential coefficient for variable steering rate (delay)
+    self.ratioDelayScale = float(ratioDelayScale)          # Multiplier for variable steering rate (delay)
+    # Re-init the MPC with the new steerRateCost if it changed
+    if rt_mpc_flag:
+      self.rtt_reset_mpc = True
+
+
   def setup_mpc(self, steer_rate_cost):
     self.libmpc = libmpc_py.libmpc
     self.libmpc.init(MPC_COST_LAT.PATH, MPC_COST_LAT.LANE, MPC_COST_LAT.HEADING, steer_rate_cost)
@@ -78,6 +100,7 @@ class LatControl(object):
     self.angle_steers_des_mpc = 0.0
     self.angle_steers_des_prev = 0.0
     self.angle_steers_des_time = 0.0
+		self.rtt_reset_mpc = False
 
   def reset(self):
     self.pid.reset()
@@ -135,6 +158,13 @@ class LatControl(object):
       # Use last 2 desired angles to determine the model's desired steer rate
       self.angle_rate_desired = (self.angle_steers_des_mpc - self.angle_steers_des_prev) / _DT_MPC
       self.mpc_updated = True
+
+      # Real-Time Tuning:  Reset MPC if steerRateCost changed
+      # TODO:  Figure out if this is the best way to accomplish the real-time change to steerRateCost
+      if self.rtt_reset_mpc:
+        self.libmpc.init(MPC_COST_LAT.PATH, MPC_COST_LAT.LANE, MPC_COST_LAT.HEADING, CP.steerRateCost)
+        self.cur_state[0].delta = math.radians(angle_steers) / CP.steerRatio
+        self.rtt_reset_mpc = False
 
       #  Check for infeasable MPC solution
       self.mpc_nans = np.any(np.isnan(list(self.mpc_solution[0].delta)))
