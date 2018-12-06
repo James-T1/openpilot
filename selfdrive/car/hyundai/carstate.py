@@ -154,7 +154,7 @@ class CarState(object):
     self.right_blinker_on = 0
     self.right_blinker_flash = 0
 
-  def update(self, cp, cp_cam):
+  def update(self, cp, cp_cam, cp_cam2):
     # copy can_valid
     self.can_valid = cp.can_valid
 
