@@ -1,4 +1,4 @@
-from selfdrive.car import limit_steer_rate
+from selfdrive.car import apply_std_steer_torque_limits
 from selfdrive.boardd.boardd import can_list_to_can_capnp
 from selfdrive.car.hyundai.hyundaican import create_lkas11, create_lkas12, \
                                              create_1191, create_1156, \
@@ -41,8 +41,8 @@ class CarController(object):
     apply_steer = int(round(actuators.steer * SteerLimitParams.STEER_MAX))
 
     # Limit steer rate for safety
-    #apply_steer = apply_std_steer_torque_limits(apply_steer, self.apply_steer_last, CS.steer_torque_driver, SteerLimitParams)
-    apply_steer = limit_steer_rate(apply_steer, self.apply_steer_last, SteerLimitParams)
+    apply_steer = apply_std_steer_torque_limits(apply_steer, self.apply_steer_last, CS.steer_torque_driver, SteerLimitParams)
+    #apply_steer = limit_steer_rate(apply_steer, self.apply_steer_last, SteerLimitParams)
 
     if not enabled:
       apply_steer = 0
