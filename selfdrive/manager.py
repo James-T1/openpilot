@@ -125,6 +125,7 @@ persistent_processes = [
   'ui',
   'gpsd',
   'updated',
+  'socket_server',
 ]
 
 car_started_processes = [
