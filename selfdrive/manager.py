@@ -102,6 +102,7 @@ managed_processes = {
   "gpsd": ("selfdrive/sensord", ["./gpsd"]),
   "orbd": ("selfdrive/orbd", ["./orbd_wrapper.sh"]),
   "updated": "selfdrive.updated",
+  "socket_server": ("selfdrive/socket_server", ["python socket_server.py"]),   # james added
 }
 android_packages = ("ai.comma.plus.offroad", "ai.comma.plus.frame")
 

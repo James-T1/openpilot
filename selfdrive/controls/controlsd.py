@@ -568,103 +568,117 @@ def controlsd_thread(gctx=None, rate=100, default_bias=0.):
         rtt_params['ratioDelayScale'] = 0.0
 
         # Write the pickle file
-        # TODO:  try/except the open
-        with open(rt_tuning_file, "wb") as f_write:
-          pickle.dump(rtt_params, f_write, -1)    # Dump to file with highest protocol (fastest)
-        # No need to update next time if we just wrote the file out...
-        last_mod_time = os.path.getmtime(rt_tuning_file)
+        try:
+          with open(rt_tuning_file, "wb") as f_write:
+            pickle.dump(rtt_params, f_write, -1)    # Dump to file with highest protocol (fastest)
+          # No need to update next time if we just wrote the file out...
+          last_mod_time = os.path.getmtime(rt_tuning_file)
+        except:   # TODO:  Fix lazy exception
+          print('ERROR:  Initial write of rt_tuning_file failed!')
         #print('RTT Last_mod_time:  {0}'.format(last_mod_time))
 
       # If file exists and has been updated since the last time we read it in
       elif last_mod_time != mod_time:
         print('Real-Time Tuning:  Reading in the modified tuning file.')
         # Read in parameters from file
-        # TODO:  try/except the open
-        with open(rt_tuning_file, "rb") as f_read:
-          rtt_params = pickle.load(f_read)
-        # Sanity check the data before setting it.. format is [min, max, failsafe]
-        #   Failsafe is used if a value is not found or if the value sent is out of the range limits
-        rt_data_limits = {  'steerKpBP': [ 0.0 , 67.0, 0.0 ],
-                  'steerKpV': [ 0.0 , 1.0, 0.2 ],
-                  'steerKiBP': [ 0.0 , 67.0, 0.0 ],
-                  'steerKiV': [ 0.0 , 1.0, 0.05 ],
-                  'steerKf': [ 0.0, 0.001, 0.00005 ],
-                  'tireStiffness': [ 20000, 1000000, 192150 ],
-                  'steerRatio': [ 8.0, 25.0, 14.0 ],
-                  'steerRateCost': [ 0.05, 1.0, 0.5 ],
-                  'steerActuatorDelay': [ 0.0, 0.5, 0.1 ],
-                  'Camera Offset': [ -0.2, 0.2, 0.06 ],
-                  'smooth_factor': [ 0.0, 10.0, 2.0 ],
-                  'projection_factor': [ 0.0, 10.0, 5.0 ],
-                  'accel_limit': [ 0.0, 10.0, 5.0 ],
-                  'ff_angle_factor': [ 0.0, 10.0, 0.5 ],
-                  'ff_rate_factor': [ 0.0, 10.0, 5.0 ],
-                  'ratioDelayExp': [ 0.0, 10.0, 2.0 ],
-                  'ratioDelayScale': [ 0.0, 10.0, 0.0 ]
-                  }
-        # Do the checks and set the values
-        for key in rt_data_limits:
-          rt_val = rtt_params.get(key)
-          if rt_val is None:
-            # If this key from data limits doesn't exist in our tuning data, then add it as the failsafe
-            # TODO:  Use CP value here instead of failsafe?
-            rtt_params[key] = rt_data_limits[key][2]
-            print('Real-Time Tuning:  Value did not exist in tuning file, replaced with failsafe.  Key: ' + key)
-            continue
-          # If it does exist, then check the values.  First see if it's a list
-          try:
-            # If it's an iterable list...
-            for i, val2 in enumerate(rt_val):
-              # Check each value in the list
-              if (val2 < rt_data_limits[key][0]) or (val2 > rt_data_limits[key][1]):
-                rt_val[i] = rt_data_limits[key][2]
-                print('Real-Time Tuning:  Invalid value replaced!  Key: ' + key)
-          except:
-            # Not interable, compare it and fix if necessary
-            if (rt_val < rt_data_limits[key][0]) or (rt_val > rt_data_limits[key][1]):
-              rt_val = rt_data_limits[key][2]
-              print('Real-Time Tuning:  Invalid value replaced!  Key: ' + key)
-          # Set it back so if anything was fixed we have the updated value
-          rtt_params[key] = rt_val
+        # TODO:  Fix lazy exception
+        valid_data = False
+        try:
+          with open(rt_tuning_file, "rb") as f_read:
+            rtt_params = pickle.load(f_read)
+          valid_data = True
+        except:
+          valid_data = False
+          print('ERROR:  Loading rt_tuning_file failed!')
 
-        # Update CP with the new params
-        CP.steerKpBP = rtt_params['steerKpBP']
-        CP.steerKpV = rtt_params['steerKpV']
-        CP.steerKiBP = rtt_params['steerKiBP']
-        CP.steerKiV = rtt_params['steerKiV']
-        CP.steerKf = rtt_params['steerKf']
-        CP.tireStiffnessFront = rtt_params['tireStiffness']
-        CP.tireStiffnessRear = rtt_params['tireStiffness']
-        CP.steerRatio = rtt_params['steerRatio']
-        CP.steerActuatorDelay = rtt_params['steerActuatorDelay']
-        if CP.steerRateCost != rtt_params['steerRateCost']:
-          print(CP.steerRateCost)
-          print(rtt_params['steerRateCost'])
-          CP.steerRateCost = rtt_params['steerRateCost']
-          rt_mpc_flag = True
-          print('Real-Time Tuning:  CP.steerRateCost changed - Re-initializing lateral MPC.')
-        else:
-          rt_mpc_flag = False
-        smooth_factor = rtt_params['smooth_factor']
-        projection_factor = rtt_params['projection_factor']
-        accel_limit = rtt_params['accel_limit']
-        ff_angle_factor = rtt_params['ff_angle_factor']
-        ff_rate_factor = rtt_params['ff_rate_factor']
-        ratioDelayExp = rtt_params['ratioDelayExp']
-        ratioDelayScale = rtt_params['ratioDelayScale']
-        # TODO:  try/except the open
-        # Write the pickle file back so if we fixed any data errors the revised values will show up on the client-side
-        with open(rt_tuning_file, "wb") as f_write:
-          pickle.dump(rtt_params, f_write, -1)    # Dump to file with highest protocol (fastest)
-          # Set the last modified time to this write.... we don't need to read back in what we just wrote out
-          # Only set this if we were able to successfully make the write (once the try/except is added)
-          last_mod_time = os.path.getmtime(rt_tuning_file)
-        # Make updates in latcontrol, etc.  I'm not sure if this is actually necessary, depends on if the objects are referenced or not.  Anyway, one less thing to debug atm.
-        VM.update_rt_params(CP)
-        LaC.update_rt_params(CP, rt_mpc_flag, smooth_factor, projection_factor, accel_limit, ff_angle_factor, ff_rate_factor, ratioDelayExp, ratioDelayScale)
-          # ^^ Updated this line.
-        PL.PP.update_rt_params(rtt_params['Camera Offset'])
-        #print('RTT Last_mod_time:  {0}'.format(last_mod_time))
+        if valid_data:
+          # Sanity check the data before setting it.. format is [min, max, failsafe]
+          #   Failsafe is used if a value is not found or if the value sent is out of the range limits
+          rt_data_limits = {  'steerKpBP': [ 0.0 , 67.0, 0.0 ],
+                    'steerKpV': [ 0.0 , 1.0, 0.2 ],
+                    'steerKiBP': [ 0.0 , 67.0, 0.0 ],
+                    'steerKiV': [ 0.0 , 1.0, 0.05 ],
+                    'steerKf': [ 0.0, 0.001, 0.00005 ],
+                    'tireStiffness': [ 20000, 1000000, 192150 ],
+                    'steerRatio': [ 8.0, 25.0, 14.0 ],
+                    'steerRateCost': [ 0.05, 1.0, 0.5 ],
+                    'steerActuatorDelay': [ 0.0, 0.5, 0.1 ],
+                    'Camera Offset': [ -0.2, 0.2, 0.06 ],
+                    'smooth_factor': [ 0.0, 10.0, 2.0 ],
+                    'projection_factor': [ 0.0, 10.0, 5.0 ],
+                    'accel_limit': [ 0.0, 10.0, 5.0 ],
+                    'ff_angle_factor': [ 0.0, 10.0, 0.5 ],
+                    'ff_rate_factor': [ 0.0, 10.0, 5.0 ],
+                    'ratioDelayExp': [ 0.0, 10.0, 2.0 ],
+                    'ratioDelayScale': [ 0.0, 10.0, 0.0 ]
+                    }
+          # Do the checks and set the values
+          for key in rt_data_limits:
+            rt_val = rtt_params.get(key)
+            if rt_val is None:
+              # If this key from data limits doesn't exist in our tuning data, then add it as the failsafe
+              # TODO:  Use CP value here instead of failsafe?
+              rtt_params[key] = rt_data_limits[key][2]
+              print('Real-Time Tuning:  Value did not exist in tuning file, replaced with failsafe.  Key: ' + key)
+              continue
+            # If it does exist, then check the values.  First see if it's a list
+            try:
+              # If it's an iterable list...
+              for i, val2 in enumerate(rt_val):
+                # Check each value in the list
+                if (val2 < rt_data_limits[key][0]) or (val2 > rt_data_limits[key][1]):
+                  rt_val[i] = rt_data_limits[key][2]
+                  print('Real-Time Tuning:  Invalid value replaced!  Key: ' + key)
+            except:
+              # Not interable, compare it and fix if necessary
+              if (rt_val < rt_data_limits[key][0]) or (rt_val > rt_data_limits[key][1]):
+                rt_val = rt_data_limits[key][2]
+                print('Real-Time Tuning:  Invalid value replaced!  Key: ' + key)
+            # Set it back so if anything was fixed we have the updated value
+            rtt_params[key] = rt_val
+
+          # Update CP with the new params
+          CP.steerKpBP = rtt_params['steerKpBP']
+          CP.steerKpV = rtt_params['steerKpV']
+          CP.steerKiBP = rtt_params['steerKiBP']
+          CP.steerKiV = rtt_params['steerKiV']
+          CP.steerKf = rtt_params['steerKf']
+          CP.tireStiffnessFront = rtt_params['tireStiffness']
+          CP.tireStiffnessRear = rtt_params['tireStiffness']
+          CP.steerRatio = rtt_params['steerRatio']
+          CP.steerActuatorDelay = rtt_params['steerActuatorDelay']
+          if CP.steerRateCost != rtt_params['steerRateCost']:
+            print(CP.steerRateCost)
+            print(rtt_params['steerRateCost'])
+            CP.steerRateCost = rtt_params['steerRateCost']
+            rt_mpc_flag = True
+            print('Real-Time Tuning:  CP.steerRateCost changed - Re-initializing lateral MPC.')
+          else:
+            rt_mpc_flag = False
+          smooth_factor = rtt_params['smooth_factor']
+          projection_factor = rtt_params['projection_factor']
+          accel_limit = rtt_params['accel_limit']
+          ff_angle_factor = rtt_params['ff_angle_factor']
+          ff_rate_factor = rtt_params['ff_rate_factor']
+          ratioDelayExp = rtt_params['ratioDelayExp']
+          ratioDelayScale = rtt_params['ratioDelayScale']
+          # TODO:  Fix lazy exception.
+          # Write the pickle file back so if we fixed any data errors the revised values will show up on the client-side
+          try:
+            with open(rt_tuning_file, "wb") as f_write:
+              pickle.dump(rtt_params, f_write, -1)    # Dump to file with highest protocol (fastest)
+              # Set the last modified time to this write.... we don't need to read back in what we just wrote out
+              # Only set this if we were able to successfully make the write (once the try/except is added)
+              last_mod_time = os.path.getmtime(rt_tuning_file)
+          except:
+            # No need to do anything else since last_mod_time won't be updated we will revisit this on the next pass.
+            print('ERROR:  Writing rt_tuning_file failed!')
+          # Make updates in latcontrol, etc.  I'm not sure if this is actually necessary, depends on if the objects are referenced or not.  Anyway, one less thing to debug atm.
+          VM.update_rt_params(CP)
+          LaC.update_rt_params(CP, rt_mpc_flag, smooth_factor, projection_factor, accel_limit, ff_angle_factor, ff_rate_factor, ratioDelayExp, ratioDelayScale)
+            # ^^ Updated this line.
+          PL.PP.update_rt_params(rtt_params['Camera Offset'])
+          #print('RTT Last_mod_time:  {0}'.format(last_mod_time))
 
     ####### END OF REAL-TIME TUNING ADD-ON #######
 
